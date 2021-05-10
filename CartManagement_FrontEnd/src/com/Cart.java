@@ -40,11 +40,11 @@ public class Cart {
 		 if (con == null) 
 		 {return "Error while connecting to the database for reading."; } 
 		 // Prepare the html table to be displayed
-		 output = "<table border='1'><tr><th>Product ID</th><th>Product Name</th>" +
+		 output = "<table border='1'><tr><th>Product Code</th><th>Product Name</th>" +
 		 "<th>Product Price</th>" + 
 		 "<th>Product Quantity</th>" +
 		 "<th> Total price</th>"+
-		 "</tr>"; 
+		 "<th>Update</th><th>Remove</th></tr>"; 
 		 
 		 String query = "select * from product"; 
 		 Statement stmt = con.createStatement(); 
@@ -52,24 +52,26 @@ public class Cart {
 		 // iterate through the rows in the result set
 		 while (rs.next()) 
 		 { 
-		 String id = rs.getString("id");
+		 String id = Integer.toString(rs.getInt("id")); 
+		 String code = rs.getString("code"); 
 		 String name = rs.getString("name"); 
 		 price = rs.getInt("price");
 		 noofproduct = rs.getInt("noofproduct");
 		 
-		
+		System.out.println(id);
 		 // Add into the html table
-		 output += "<tr><td>" + id + "</td>"; 
+		 output += "<tr><td><input id='hidItemIDUpdate' name='hidItemIDUpdate' type='hidden' value='" + id + "'>"
+				 + code + "</td>";
 		 output += "<td>" + name + "</td>"; 
 		 output += "<td>" + price + "</td>"; 
 		 output += "<td>" + noofproduct + "</td>";
 		 output +="<td>" +getTotalPrice()+ "</td>";
 		 // buttons
-//		 output += "<td><input name='btnUpdate' type='button' value='Update' class='btn btn-secondary'></td>"
-//		 + "<td><form method='post' action='items.jsp'>"
-//		 + "<input name='btnRemove' type='submit' value='Remove' class='btn btn-danger'>"
-//		 + "<input name='itemID' type='hidden' value='" + id 
-//		 + "'>" + "</form></td></tr>"; 
+	 output += "<td><input name='btnUpdate' type='button' value='Update' class='btnUpdate btn btn-secondary' data-id='" + id + "'></td>"
+	 + "<td><form method='post' action='Cart.jsp'>"
+	 + "<input name='btnRemove' type='button' value='Remove' class='btnRemove btn btn-danger' data-id='" + id + "'>"
+	 + "<input name='hidItemIDDelete' type='hidden' "
+	 + " value='" + id + "'>" + "</form></td></tr>"; 
 		 } 
 		 con.close(); 
 		 // Complete the html table
@@ -90,7 +92,7 @@ public class Cart {
 	}
 	
 	
-	public String insertItem(String id, String name, String price, String noofproduct) 
+	public String insertItem(String code, String name, String price, String noofproduct) 
 	 { 
 	 String output = ""; 
 	 try
@@ -99,26 +101,30 @@ public class Cart {
 	 if (con == null) 
 	 {return "Error while connecting to the database for inserting."; } 
 	 // create a prepared statement
-	 String query = " insert into product(id,name,price,noofproduct)"
-	 + " values (?, ?, ?, ?)"; 
+	 String query = " insert into product(id,code,name,price,noofproduct)"
+	 + " values (?, ?, ?, ?, ?)"; 
 	 PreparedStatement preparedStmt = con.prepareStatement(query); 
 	 // binding values
-	 preparedStmt.setString(1, id); 
-	 preparedStmt.setString(2, name); 
-	 preparedStmt.setDouble(3, Double.parseDouble(price)); 
-	 preparedStmt.setString(4, noofproduct); 
+	 preparedStmt.setInt(1, 0); 
+	 preparedStmt.setString(2, code); 
+	 preparedStmt.setString(3, name); 
+	 preparedStmt.setDouble(4, Double.parseDouble(price)); 
+	 preparedStmt.setString(5, noofproduct); 
 	// execute the statement
 	 preparedStmt.execute(); 
 	 con.close(); 
-	 output = "Inserted successfully"; 
+	 String newItems = readItems();
+	 output =  "{\"status\":\"success\", \"data\": \"" + 
+			 newItems + "\"}"; 
 	 } 
-	 catch (Exception e) 
+
+	catch (Exception e) 
 	 { 
-	 output = "Error while inserting the item."; 
+		output = "{\"status\":\"error\", \"data\": \"Error while inserting the item.\"}";  
 	 System.err.println(e.getMessage()); 
 	 } 
-	 return output; 
-	 } 
+	return output; 
+	}
 	
 	public String updateItem(String id, String name, String noofproduct)
 	{ 
@@ -143,15 +149,19 @@ public class Cart {
 		 // execute the statement
 		 preparedStmt.execute(); 
 		 con.close(); 
-		 output = "Updated successfully"; 
+		 String newItems = readItems();
+		 output =  "{\"status\":\"success\", \"data\": \"" + 
+				 newItems + "\"}"; 
 		 } 
-		 catch (Exception e) 
+
+		catch (Exception e) 
 		 { 
-		 output = "Error while updating the item."; 
-		 System.err.println(e.getMessage()); 
-		 } 
-		 return output; 
-		 }
+			output = "{\"status\":\"error\", \"data\": \"Error while Updating the item.\"}";  
+		
+		System.err.println(e.getMessage());
+		}
+		return output;
+		}
 	
 	public String deleteItem(String id) 
 	 { 
@@ -165,23 +175,23 @@ public class Cart {
 	 String query = "delete from product where id=?"; 
 	 PreparedStatement preparedStmt = con.prepareStatement(query); 
 	 // binding values
-	 preparedStmt.setString(1,id);
+	 preparedStmt.setInt(1, Integer.parseInt(id));
 	 // execute the statement
 	 preparedStmt.execute(); 
 	 con.close(); 
-	 output = "Deleted successfully"; 
+	 String newItems = readItems();
+	 output =  "{\"status\":\"success\", \"data\": \"" + 
+			 newItems + "\"}"; 
 	 } 
-	 catch (Exception e) 
+
+	catch (Exception e) 
 	 { 
-	 output = "Error while deleting the item."; 
+		output = "{\"status\":\"error\", \"data\": \"Error while deleting the item.\"}";  
 	 System.err.println(e.getMessage()); 
 	 } 
-	 return output; 
-	 } 
-	
-	
-	
-	
-	}
+	return output; 
+		}
+
+}
 
 
